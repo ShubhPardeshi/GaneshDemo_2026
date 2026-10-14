@@ -32,19 +32,29 @@ struct network
     GLfloat z;
 };
 
+//Scene 1 
 struct network points[NUMBER_OF_POINTS];
-int nextPointVal;
+static int nextPointVal;
 float sweepXLeft = -1.0f; 
 float sweepXRight = 1.0f; 
 float sweepDelta = 0.00005f; 
 int delay; 
 static int slowSpeed;
+BOOL bBlankScreen = FALSE; 
+
+//Scene 2 
+BOOL bScene2 = FALSE;
+GLuint fontBase = 0;
+
+//Scene 3
+BOOL bScene3 = FALSE;
 
 enum stateMachine
 {
     GreenPoints, 
     GoldenPoints, 
-    LineConnect
+    LineConnect, 
+    BlankScreen
 }state ; 
 
 // Macros
@@ -107,7 +117,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     // create the window
     hwnd = CreateWindowEx(WS_EX_APPWINDOW,
                           szAppName,
-                          TEXT("RTR7 Siddhesh Sharad Hande"),
+                          TEXT("RTR7-027:Shubhangi Pardeshi"),
                           WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
                           ScreenWidth / 2 - WIN_WIDTH / 2,
                           ScreenHeight / 2 - WIN_HEIGHT / 2,
@@ -234,7 +244,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
                 bFullScreen = FALSE;
             }
             break;
-
+        case 'S':
+        case 's': 
+            bScene2 = TRUE;
+            break;
+        case 'B':
+        case 'b': 
+            bScene3 = TRUE;
+            break;
         default:
             break;
         }
@@ -352,6 +369,19 @@ int initialize(void)
         points[i].y = -1.0f + (rand() % 1000) / 500.0f;
         points[i].z = 0.0f;
     }
+    
+    HFONT hFont;
+    HFONT hOldFont;
+
+    fontBase = glGenLists(96);
+    hFont = CreateFont(100, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+                       ANSI_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
+                       ANTIALIASED_QUALITY, FF_DONTCARE | DEFAULT_PITCH,
+                       TEXT("Arial"));
+    hOldFont = (HFONT)SelectObject(ghdc, hFont);
+    wglUseFontBitmaps(ghdc, 32, 96, fontBase);
+    SelectObject(ghdc, hOldFont);
+    DeleteObject(hFont);
 
     // warm up resize
     resize(WIN_WIDTH, WIN_HEIGHT);
@@ -386,13 +416,72 @@ void render(void)
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+    
+    glPushMatrix(); //1
 
     glTranslatef(0.0f, 0.0f, -1.0f);
     glScalef(1.1f, 0.8f, 0.0f);
-
+    
     networkPoints(NUMBER_OF_POINTS);
     connectNetwork(NUMBER_OF_POINTS); 
+
+    glPopMatrix(); //1
     
+    if(bBlankScreen)
+        //code 
+
+    if(bScene2 == TRUE)
+    {
+        glPushMatrix();
+
+        glTranslatef(0.0f, 0.6f, -2.0f);
+        glScalef(1.7f, 0.5f, 0.0f);
+        
+        networkPoints(NUMBER_OF_POINTS);
+        //connectNetwork(NUMBER_OF_POINTS);
+        
+        char text[] = "Happy Birthday!!!";
+
+        glColor3f(0.85f, 0.70f, 0.20f);
+        glRasterPos3f(-0.5f, -1.5f, 0.0f);
+
+        glListBase(fontBase - 32);
+        glCallLists((GLsizei)strlen(text), GL_UNSIGNED_BYTE, text);
+    }
+    else if(bScene3 == TRUE)
+    {
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glLoadIdentity();
+        glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        glLoadIdentity();
+
+        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+            glColor4f(0.0f, 0.0f, 0.0f, 0.0f);
+
+            glBegin(GL_QUADS);
+            glVertex3f(-1.0f, -1.0f, 0.0f);
+            glVertex3f(1.0f, -1.0f, 0.0f);
+            glVertex3f(1.0f, 1.0f, 0.0f);
+            glVertex3f(-1.0f, 1.0f, 0.0f);
+            glEnd();
+
+        glDisable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
+
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
+        glPopMatrix();
+    }
+
+
     // do double buffering
     SwapBuffers(ghdc);
 }
@@ -416,16 +505,27 @@ void update(void)
         else 
             state = LineConnect; 
     }
-    else if (state = LineConnect)
+    else if (state == LineConnect)
     {
        if(nextPointVal < (NUMBER_OF_POINTS - 1))
-    {
-         if(slowSpeed++ == 100)
         {
-            nextPointVal = nextPointVal + 1;
+         if(slowSpeed++ == 30)
+         {
+            nextPointVal = nextPointVal + 10;
             slowSpeed = 0;
+         }
         }
+        else 
+            state = BlankScreen;
     }
+    else if (state == BlankScreen)  
+    {
+        bBlankScreen = TRUE;
+         if(sweepXLeft < sweepXRight)
+         {
+            sweepXLeft += 0.05f; //speed
+         } 
+            //state = LineConnect; 
     }
 }
 
@@ -501,6 +601,9 @@ void connectNetwork(int networkSize)
     {
         glVertex3f(points[i].x, points[i].y, points[0].z);
         glVertex3f(points[i + 1].x, points[i + 1].y, points[0].z);
+
+        if(bScene2)
+            break; 
     }
     glEnd();
 }

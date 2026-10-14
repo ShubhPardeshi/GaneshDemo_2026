@@ -1,0 +1,2 @@
+Program started successfully
+SSH: WinMain: initialize() successedProgram termionated successfully
